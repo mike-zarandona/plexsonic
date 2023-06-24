@@ -1,22 +1,32 @@
 "use client";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import styles from "./page.module.css";
-import useWebSocket, { ReadyState } from "react-use-websocket";
-
-const socketUrl = `ws://localhost:3000`;
+import socketIOClient from "socket.io-client";
 
 export default function Home() {
-  const { readyState /*, ... */ } = useWebSocket(socketUrl, {
-    onOpen: () => console.log("Connected to websocket server"), // client connection
-  });
+  const [payloadData, setPayloadData] = useState("");
 
-  const readyStateString = ReadyState[readyState];
+  useEffect(() => {
+    const socket = socketIOClient();
+
+    // Event handler for receiving payload data from the backend
+    socket.on("payload", (data) => {
+      console.log(JSON.parse(data));
+      setPayloadData(data);
+    });
+
+    return () => {
+      // Clean up the socket connection on unmount
+      socket.disconnect();
+    };
+  }, []);
 
   return (
     <main className={styles.main}>
       <div className={styles.description}>
         <p>
-          ReadyState: {readyStateString}
+          ReadyState: {payloadData}
           <br />
           Get started by editing&nbsp;
           <code className={styles.code}>src/app/page.tsx</code>
