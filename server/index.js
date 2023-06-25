@@ -11,6 +11,8 @@ const handle = nextApp.getRequestHandler();
 const port = process.env.PORT || 3000;
 
 nextApp.prepare().then(() => {
+  let latestPayload;
+
   // Create an instance of the Express server
   const app = express();
   const server = app.listen(port, () => {
@@ -26,6 +28,13 @@ nextApp.prepare().then(() => {
     // Add the connected socket to the clients array
     clients.push(socket);
 
+    // if there's valid payload data, emit it on connect
+    if (latestPayload !== undefined) {
+      clients.forEach((client) => {
+        client.emit("payload", JSON.stringify(latestPayload));
+      });
+    }
+
     // Remove the disconnected socket from the clients array
     socket.on("disconnect", () => {
       clients = clients.filter((client) => client !== socket);
@@ -39,11 +48,9 @@ nextApp.prepare().then(() => {
   // Define your route for the Plex webhook
   app.post("/webhook", upload.single("thumb"), async (req, res) => {
     const payload = JSON.parse(req.body.payload);
-  server.on("message", function (req, socket, head) {
-    const { pathname } = parse(req.url, true);
-    if (pathname !== "/_next/webpack-hmr") {
-      wss.handleUpgrade(req, socket, head, function done(ws) {
-        wss.emit("connection", ws, req);
+
+    latestPayload = payload;
+
       });
     }
     // Access the parsed payload data
