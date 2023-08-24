@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const socketIO = require("socket.io");
 const next = require("next");
-const sha1 = require("sha1");
+const userConfig = require("../.config");
 
 const dev = process.env.NODE_ENV !== "production";
 const nextApp = next({ dev });
@@ -31,7 +31,7 @@ nextApp.prepare().then(() => {
     // if there's valid payload data, emit it on connect
     if (latestPayload !== undefined) {
       clients.forEach((client) => {
-        client.emit("payload", JSON.stringify(latestPayload));
+        client.emit("payload", latestPayload);
       });
     }
 
@@ -42,19 +42,30 @@ nextApp.prepare().then(() => {
   });
 
   // Create a storage engine for multer
-  const storage = multer.memoryStorage();
+  // const storage = multer.memoryStorage();
+  // const upload = multer({ storage });
+  const storage = multer.diskStorage({
+    destination: "./tmp",
+    filename: function (req, file, cb) {
+      cb(null, "thumb.jpg");
+    },
+  });
   const upload = multer({ storage });
 
   // Define your route for the Plex webhook
   app.post("/webhook", upload.single("thumb"), async (req, res) => {
     const payload = JSON.parse(req.body.payload);
+    const isAudio = payload.Metadata.type === "track";
+    // const isVideo = ["movie", "episode"].includes(payload.Metadata.type);
 
-    latestPayload = payload;
+    // only continue with this webhook payload if it's for the correct user
+    if (payload.Account.title !== userConfig.user.username || !isAudio) return;
 
-      });
-    }
+    latestPayload = req.body.payload;
+
     // Access the parsed payload data
     const payloadData = JSON.stringify(req.body.payload);
+
     // Emit the data to all connected WebSocket clients
     clients.forEach((client) => {
       client.emit("payload", payloadData);

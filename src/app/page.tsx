@@ -1,19 +1,41 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import styles from "./page.module.css";
 import socketIOClient from "socket.io-client";
+import userConfig from "../../.config.json";
+import styled from "styled-components";
 
 export default function Home() {
-  const [payloadData, setPayloadData] = useState("");
+  const [payloadData, setPayloadData] = useState<any>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
+  const isFrontendOnly = process.env.NEXT_PUBLIC_PLAYING_FIXTURE === "true";
+
+  // boot-up effects
   useEffect(() => {
+    // if frontend local dev, load fixture data
+    if (isFrontendOnly) {
+      const fixture = require("../fixtures").fixture;
+      setPayloadData(fixture);
+
+      return;
+    }
+
+    //
+    // Socket.io connection to node backend
     const socket = socketIOClient();
 
-    // Event handler for receiving payload data from the backend
+    // Event handler to receive payload data from the backend
     socket.on("payload", (data) => {
-      console.log(JSON.parse(data));
-      setPayloadData(data);
+      const payload = JSON.parse(data);
+
+      if (typeof payload === "string") {
+        setPayloadData(JSON.parse(payload));
+        return;
+      }
+
+      setPayloadData(payload);
     });
 
     return () => {
@@ -22,96 +44,112 @@ export default function Home() {
     };
   }, []);
 
+  // play/pause status
+  useEffect(() => {
+    if (isFrontendOnly) return;
+
+    if (payloadData?.event === "media.pause") setIsPaused(true);
+    if (
+      payloadData?.event === "media.play" ||
+      payloadData?.event === "media.resume"
+    )
+      setIsPaused(false);
+  }, [payloadData?.event]);
+
+  const albumArtSrc = `https://${userConfig.plexServer.address.replaceAll(
+    ".",
+    "-"
+  )}.${userConfig.libraryID}.plex.direct:${
+    userConfig.plexServer.port
+  }/photo/:/transcode?width=1200&height=1200&minSize=1&upscale=1&url=${encodeURIComponent(
+    payloadData?.Metadata?.thumb
+  )}&X-Plex-Token=${userConfig.user.xPlexToken}`;
+
+  if (payloadData?.Metadata?.thumb === undefined) {
+    return <h1>Listening...</h1>;
+  }
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          ReadyState: {payloadData}
-          <br />
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+    <main>
+      <Wrapper>
+        <AlbumArt
+          src={albumArtSrc}
+          width={400}
+          height={400}
+          className={`${isPaused && "paused"}`}
+          title={`Album artwork for ${payloadData?.Metadata?.parentTitle} by ${payloadData?.Metadata?.grandparentTitle}`}
+          alt={`Album artwork for ${payloadData?.Metadata?.parentTitle} by ${payloadData?.Metadata?.grandparentTitle}`}
+          style={{
+            filter: isPaused ? `grayscale(0.95)` : `grayscale(0)`,
+          }}
         />
-      </div>
 
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+        <RightColumn>
+          <Artist>{payloadData?.Metadata?.grandparentTitle}</Artist>
+          <Title>{payloadData?.Metadata?.title}</Title>
+          <Album>
+            {payloadData?.Metadata?.parentTitle} (
+            {payloadData?.Metadata?.parentYear})
+          </Album>
+        </RightColumn>
+      </Wrapper>
     </main>
   );
 }
+
+const Wrapper = styled.div`
+  display: flex;
+  flex-direction: row;
+  padding-top: 40px;
+  padding-left: 40px;
+  padding-right: 40px;
+  padding-bottom: 40px;
+`;
+
+const RightColumn = styled.div`
+  flex-direction: column;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+`;
+
+const AlbumArt = styled(Image)`
+  border-radius: 5px;
+  transition: all 1000ms ease-in-out 0ms;
+  display: inline-block;
+  width: 400px;
+  height: 400px;
+  margin-right: 2em;
+`;
+
+const Artist = styled.p`
+  width: auto;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.1em;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-weight: 300;
+  opacity: 1;
+`;
+const Title = styled.p`
+  width: auto;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.1em;
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-weight: 500;
+  opacity: 1;
+`;
+const Album = styled.p`
+  width: auto;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.1em;
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-weight: 300;
+  opacity: 0.5;
+`;
