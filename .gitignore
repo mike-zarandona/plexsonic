@@ -8,6 +8,8 @@ node_modules
 
 # testing
 /coverage
+src/fixtures/*
+!src/fixtures/README.md
 
 # next.js
 /.next/
@@ -27,6 +29,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.config.json
 
 # vercel
 .vercel
@@ -34,3 +37,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tmp
+tmp/*
