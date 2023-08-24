@@ -42,7 +42,7 @@ export default function Home() {
       // Clean up the socket connection on unmount
       socket.disconnect();
     };
-  }, []);
+  }, [isFrontendOnly]);
 
   // play/pause status
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function Home() {
       payloadData?.event === "media.resume"
     )
       setIsPaused(false);
-  }, [payloadData?.event]);
+  }, [payloadData?.event, isFrontendOnly]);
 
   const albumArtSrc = `https://${userConfig.plexServer.address.replaceAll(
     ".",
