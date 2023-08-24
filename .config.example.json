@@ -1,0 +1,11 @@
+{
+  "plexServer": {
+    "address": "0.0.0.0",
+    "port": 32400
+  },
+  "user": {
+    "username": "",
+    "xPlexToken": ""
+  },
+  "libraryID": ""
+}
