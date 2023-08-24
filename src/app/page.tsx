@@ -15,12 +15,12 @@ export default function Home() {
   // boot-up effects
   useEffect(() => {
     // if frontend local dev, load fixture data
-    if (isFrontendOnly) {
-      const fixture = require("../fixtures").fixture;
-      setPayloadData(fixture);
+    // if (isFrontendOnly) {
+    //   const fixture = require("../fixtures").fixture;
+    //   setPayloadData(fixture);
 
-      return;
-    }
+    //   return;
+    // }
 
     //
     // Socket.io connection to node backend
