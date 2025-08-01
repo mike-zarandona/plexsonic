@@ -24,6 +24,7 @@ export interface PlexMetadata {
   addedAt: number;
   updatedAt: number;
   parentYear?: number;
+  year?: number;
 }
 
 export interface PlexPlayer {

@@ -191,12 +191,12 @@ class StorageService {
 - Add error handling for API failures
 
 ### Research Tasks
-1. **Discover Plex REST APIs**
+1. **Discover Plex REST APIs** ✅
    ```typescript
-   // Potential endpoints to investigate:
-   // GET /status/sessions - Current playback sessions
-   // GET /library/metadata/{id} - Media details
-   // GET /playlists - User playlists
+   // Implemented endpoints:
+   // GET /status/sessions - Current playback sessions ✅
+   // GET /library/metadata/{id} - Media details ✅
+   // GET / - Server info and connection test ✅
    ```
 
 2. **Image Optimization**
@@ -206,10 +206,10 @@ class StorageService {
      `?width=1200&height=1200&minSize=1&upscale=1` +
      `&url=${encodeURIComponent(thumb)}&X-Plex-Token=${token}`;
    
-   // Investigate:
-   // - Optimal sizes for Pi displays
-   // - Caching strategies
-   // - Fallback images
+   // Implemented:
+   // - Configurable sizes via query params ✅
+   // - File-based cache with 100MB limit ✅
+   // - SVG and emoji fallbacks ✅
    ```
 
 3. **Extended Metadata**
@@ -219,11 +219,11 @@ class StorageService {
    - Lyrics (if available)
 
 ### Implementation Tasks
-- [ ] Plex API service class
-- [ ] Current state fetching on startup
-- [ ] Image caching system
-- [ ] API error handling and retries
-- [ ] Fallback UI for missing data
+- [x] Plex API service class
+- [x] Current state fetching on startup
+- [x] Image caching system
+- [x] API error handling and retries
+- [x] Fallback UI for missing data
 
 ## Phase 3: Display Optimization (Day 5-6)
 
@@ -419,3 +419,30 @@ npm run bench             # Run performance benchmarks
 ---
 
 *Last updated: 2025-08-01*
+
+## Phase 2 Implementation Notes
+
+### Completed Features
+1. **PlexApiService** (`backend/src/services/plex-api.ts`)
+   - Fetches current playback sessions from `/status/sessions`
+   - Normalizes session data to match webhook format
+   - Includes retry logic with exponential backoff
+   - Connection testing on startup
+
+2. **Image Caching** (`backend/src/services/image-cache.ts`)
+   - File-based cache with MD5 hash keys
+   - 100MB size limit with LRU eviction
+   - 7-day TTL for cached images
+   - Backend proxy endpoint at `/api/image`
+
+3. **Enhanced Error Handling**
+   - 3 retry attempts with exponential backoff
+   - Timeout protection (10 seconds)
+   - Graceful fallbacks for missing data
+   - Type-specific UI (music/movie/episode)
+
+4. **Frontend Improvements**
+   - Fallback UI with media-type emojis
+   - Better handling of missing metadata
+   - Support for movies and TV episodes
+   - Image loading error handling

@@ -72,6 +72,20 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(200).send({ status: 'ignored', reason: 'different user' });
       }
 
+      // Debug: Log webhook metadata to see what image fields are available
+      console.log('DEBUG - Webhook metadata received:', JSON.stringify({
+        title: webhookData.Metadata.title,
+        type: webhookData.Metadata.type,
+        thumb: webhookData.Metadata.thumb,
+        art: webhookData.Metadata.art,
+        parentThumb: webhookData.Metadata.parentThumb,
+        grandparentThumb: webhookData.Metadata.grandparentThumb,
+        grandparentArt: webhookData.Metadata.grandparentArt,
+        // Include parent info for context
+        grandparentTitle: webhookData.Metadata.grandparentTitle,
+        parentTitle: webhookData.Metadata.parentTitle
+      }, null, 2));
+
       // Create current state from webhook data
       const currentState: CurrentState = {
         event: webhookData.event,
