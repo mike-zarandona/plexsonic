@@ -1,10 +1,11 @@
-import React from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
-import { NowPlaying } from './components/NowPlaying';
+import { useDisplayMode } from './hooks/useDisplayMode';
+import { GestureWrapper } from './components/GestureWrapper';
 import { ConnectionStatus } from './components/ConnectionStatus';
 
 function App() {
   const { currentState, connectionStatus, reconnectAttempts } = useWebSocket();
+  const displayConfig = useDisplayMode();
 
   return (
     <div className="min-h-screen bg-black">
@@ -14,7 +15,12 @@ function App() {
       />
 
       {currentState ? (
-        <NowPlaying currentState={currentState} />
+        <GestureWrapper
+          currentState={currentState}
+          initialMode={displayConfig.mode}
+          touchEnabled={displayConfig.touchEnabled}
+          animationsEnabled={displayConfig.animationsEnabled}
+        />
       ) : (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">

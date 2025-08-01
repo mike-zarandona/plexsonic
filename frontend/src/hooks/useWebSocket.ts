@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { CurrentState, WebSocketMessage } from '../types/plex';
+import { useDebouncedCallback } from './useDebounce';
 
 interface UseWebSocketReturn {
   currentState: CurrentState | null;
@@ -8,7 +9,7 @@ interface UseWebSocketReturn {
   reconnectAttempts: number;
 }
 
-const WS_URL = import.meta.env.DEV
+const WS_URL = window.location.hostname === 'localhost'
   ? 'ws://localhost:3001/ws'
   : `ws://${window.location.host}/ws`;
 
@@ -21,8 +22,13 @@ export function useWebSocket(): UseWebSocketReturn {
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const pingIntervalRef = useRef<number | null>(null);
+
+  // Debounce state updates to reduce unnecessary re-renders
+  const debouncedStateUpdate = useDebouncedCallback((newState: CurrentState | null) => {
+    setCurrentState(newState);
+  }, 100);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -42,7 +48,7 @@ export function useWebSocket(): UseWebSocketReturn {
         setReconnectAttempts(0);
 
         // Start ping interval
-        pingIntervalRef.current = setInterval(() => {
+        pingIntervalRef.current = window.setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'ping' }));
           }
@@ -57,14 +63,11 @@ export function useWebSocket(): UseWebSocketReturn {
           const message: WebSocketMessage = JSON.parse(event.data);
           
           if (message.type === 'state-update') {
-            setCurrentState((prevState) => {
-              // Only update if data actually changed
-              const newData = message.data || null;
-              if (JSON.stringify(prevState) === JSON.stringify(newData)) {
-                return prevState;
-              }
-              return newData;
-            });
+            const newData = message.data || null;
+            // Only update if data actually changed (deep comparison)
+            if (JSON.stringify(currentState) !== JSON.stringify(newData)) {
+              debouncedStateUpdate(newData);
+            }
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
@@ -87,7 +90,7 @@ export function useWebSocket(): UseWebSocketReturn {
         const delay = RECONNECT_DELAYS[Math.min(reconnectAttempts, RECONNECT_DELAYS.length - 1)];
         console.log(`Reconnecting in ${delay}ms...`);
         
-        reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = window.setTimeout(() => {
           setReconnectAttempts((prev) => prev + 1);
           connect();
         }, delay);

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 
 interface ConnectionStatusProps {
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
