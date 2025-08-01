@@ -1,0 +1,421 @@
+# PlexSonic v2 - Complete Development Plan
+
+## Project Overview
+PlexSonic is a lightweight, real-time media display application designed to show currently playing Plex media on a Raspberry Pi with a mini display. This document outlines the complete rebuild plan, addressing security, performance, and reliability issues found in v1.
+
+## Architecture Summary
+
+### Tech Stack
+- **Frontend**: Vite + React 18 + TypeScript + Tailwind CSS
+- **Backend**: Fastify + TypeScript + WebSocket
+- **Storage**: Local JSON file (no external dependencies)
+- **Deployment**: systemd service on Raspberry Pi
+
+### Key Improvements from v1
+1. **Security**: Environment-based configuration, webhook authentication
+2. **Performance**: Optimized for ARM processors, < 200KB frontend bundle
+3. **Reliability**: Auto-reconnecting WebSocket, state persistence
+4. **UX**: Touch-friendly, responsive layouts, smooth animations
+
+## Phase 1: Core Infrastructure (Day 1-2)
+
+### Objectives
+- Set up project structure
+- Implement secure webhook handling
+- Establish WebSocket communication
+- Create basic real-time display
+
+### Project Structure
+```
+plexsonic/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── NowPlaying.tsx
+│   │   │   └── ConnectionStatus.tsx
+│   │   ├── hooks/
+│   │   │   └── useWebSocket.ts
+│   │   ├── types/
+│   │   │   └── plex.ts
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── backend/
+│   ├── src/
+│   │   ├── routes/
+│   │   │   └── webhook.ts
+│   │   ├── services/
+│   │   │   ├── storage.ts
+│   │   │   └── websocket.ts
+│   │   ├── types/
+│   │   │   └── plex.ts
+│   │   ├── config.ts
+│   │   └── server.ts
+│   ├── package.json
+│   └── tsconfig.json
+├── data/
+│   └── .gitkeep
+├── scripts/
+│   ├── install-pi.sh
+│   └── plexsonic.service
+├── .env.example
+├── .gitignore
+├── README.md
+└── docker-compose.yml
+```
+
+### Environment Configuration
+```bash
+# .env.example
+# Plex Configuration
+PLEX_SERVER_URL=192.168.1.100
+PLEX_SERVER_PORT=32400
+PLEX_TOKEN=your-plex-token
+PLEX_USERNAME=your-username
+PLEX_LIBRARY_ID=library-id
+
+# Webhook Security
+WEBHOOK_SECRET=generate-random-secret
+
+# Server Configuration
+BACKEND_PORT=3001
+FRONTEND_PORT=5173
+
+# Feature Flags
+ENABLE_TOUCH_GESTURES=true
+ENABLE_ANIMATIONS=true
+```
+
+### Core Implementation Tasks
+
+#### 1.1 Backend Foundation
+```typescript
+// types/plex.ts - Based on v1 research
+interface PlexWebhookPayload {
+  event: 'media.play' | 'media.pause' | 'media.resume' | 'media.stop';
+  user: boolean;
+  owner: boolean;
+  Account: {
+    id: number;
+    thumb: string;
+    title: string; // username
+  };
+  Server: {
+    title: string;
+    uuid: string;
+  };
+  Player: {
+    local: boolean;
+    publicAddress: string;
+    title: string;
+    uuid: string;
+  };
+  Metadata: {
+    librarySectionType: 'artist' | 'movie' | 'show';
+    ratingKey: string;
+    key: string;
+    parentRatingKey: string;
+    grandparentRatingKey: string;
+    guid: string;
+    librarySectionID: number;
+    type: 'track' | 'movie' | 'episode';
+    title: string;
+    grandparentKey: string;
+    parentKey: string;
+    grandparentTitle: string; // Artist
+    parentTitle: string;      // Album
+    summary: string;
+    index: number;
+    parentIndex: number;
+    ratingCount: number;
+    thumb: string;           // Album art path
+    art: string;
+    parentThumb: string;
+    grandparentThumb: string;
+    grandparentArt: string;
+    addedAt: number;
+    updatedAt: number;
+    parentYear?: number;     // Album year
+  };
+}
+
+interface CurrentState {
+  event: string;
+  metadata: PlexWebhookPayload['Metadata'];
+  player: PlexWebhookPayload['Player'];
+  timestamp: number;
+  isPaused: boolean;
+}
+```
+
+#### 1.2 WebSocket Implementation
+- Auto-reconnect with exponential backoff
+- Heartbeat every 30 seconds
+- State sync on connection
+- Graceful disconnection handling
+
+#### 1.3 Storage Service
+```typescript
+// Simple JSON file storage
+class StorageService {
+  private filePath = './data/current-state.json';
+  
+  async saveState(state: CurrentState): Promise<void>;
+  async getState(): Promise<CurrentState | null>;
+  async clearState(): Promise<void>;
+}
+```
+
+#### 1.4 Frontend Foundation
+- React app with TypeScript
+- WebSocket hook with auto-reconnect
+- Basic Now Playing component
+- Connection status indicator
+
+### Deliverables
+- [ ] Working webhook endpoint with authentication
+- [ ] WebSocket server broadcasting updates
+- [ ] React frontend receiving real-time updates
+- [ ] Basic media display (title, artist, album, art)
+- [ ] State persistence across restarts
+
+## Phase 2: Plex API Integration (Day 3-4)
+
+### Objectives
+- Research and implement additional Plex API endpoints
+- Add "fetch current state" capability
+- Implement album art caching
+- Add error handling for API failures
+
+### Research Tasks
+1. **Discover Plex REST APIs**
+   ```typescript
+   // Potential endpoints to investigate:
+   // GET /status/sessions - Current playback sessions
+   // GET /library/metadata/{id} - Media details
+   // GET /playlists - User playlists
+   ```
+
+2. **Image Optimization**
+   ```typescript
+   // Current v1 pattern (working):
+   const albumArtUrl = `https://${server}.plex.direct:${port}/photo/:/transcode` +
+     `?width=1200&height=1200&minSize=1&upscale=1` +
+     `&url=${encodeURIComponent(thumb)}&X-Plex-Token=${token}`;
+   
+   // Investigate:
+   // - Optimal sizes for Pi displays
+   // - Caching strategies
+   // - Fallback images
+   ```
+
+3. **Extended Metadata**
+   - Track duration and progress
+   - Quality/bitrate information
+   - Multiple artist support
+   - Lyrics (if available)
+
+### Implementation Tasks
+- [ ] Plex API service class
+- [ ] Current state fetching on startup
+- [ ] Image caching system
+- [ ] API error handling and retries
+- [ ] Fallback UI for missing data
+
+## Phase 3: Display Optimization (Day 5-6)
+
+### Objectives
+- Implement responsive layouts for different screen sizes
+- Add touch gesture support
+- Create multiple view modes
+- Optimize performance for Raspberry Pi
+
+### Display Targets
+```typescript
+// Support these common Pi display sizes:
+const displays = {
+  'waveshare35': { width: 480, height: 320 },
+  'waveshare5': { width: 800, height: 480 },
+  'waveshare7': { width: 1024, height: 600 },
+  'hdmi720p': { width: 1280, height: 720 },
+  'hdmi1080p': { width: 1920, height: 1080 }
+};
+```
+
+### Layout Modes
+1. **Compact Mode** (small displays)
+   - Album art + essential info
+   - Large, readable text
+   - No animations
+
+2. **Standard Mode** (medium displays)
+   - Full metadata display
+   - Progress bar
+   - Subtle animations
+
+3. **Gallery Mode** (large displays)
+   - Large album art
+   - Artist bio/info
+   - Visual effects
+
+### Performance Optimizations
+- [ ] Lazy load images
+- [ ] Debounce rapid updates
+- [ ] GPU-accelerated CSS only
+- [ ] Service worker for offline assets
+- [ ] Memory usage monitoring
+
+## Phase 4: Advanced Features (Day 7-8)
+
+### Objectives
+- Add configuration UI
+- Implement themes
+- Add gesture controls
+- Create deployment automation
+
+### Features
+1. **Configuration Interface**
+   - Web-based settings page
+   - Display mode selection
+   - Theme customization
+   - Connection testing
+
+2. **Touch Gestures**
+   - Swipe: Next/previous layout
+   - Tap: Show/hide details
+   - Long press: Settings
+   - Pinch: Zoom album art
+
+3. **Themes**
+   - Dark (default)
+   - Light
+   - High contrast
+   - Custom color schemes
+
+### Deployment
+```bash
+# One-line Pi installation:
+curl -sSL https://raw.githubusercontent.com/[user]/plexsonic/main/scripts/install-pi.sh | bash
+```
+
+## Phase 5: Testing & Documentation (Day 9-10)
+
+### Testing Strategy
+- Unit tests for API integration
+- E2E tests for critical flows
+- Performance benchmarks on Pi
+- Multiple display size testing
+
+### Documentation
+- [ ] Installation guide
+- [ ] Configuration reference
+- [ ] Troubleshooting guide
+- [ ] API documentation
+- [ ] Contributing guidelines
+
+## Performance Targets
+
+### Metrics
+- **Bundle Size**: < 200KB gzipped
+- **Memory Usage**: < 50MB idle, < 100MB active
+- **CPU Usage**: < 5% idle, < 20% during updates
+- **Startup Time**: < 2 seconds
+- **Update Latency**: < 100ms
+
+### Raspberry Pi Models
+Optimized for:
+- Raspberry Pi Zero 2 W (minimum)
+- Raspberry Pi 3B+ (recommended)
+- Raspberry Pi 4 (best performance)
+
+## Security Considerations
+
+### Implemented Security
+1. **No Frontend Secrets**: All tokens server-side only
+2. **Webhook Authentication**: HMAC signature validation
+3. **Environment Variables**: All config in .env
+4. **CORS Protection**: Whitelist frontend only
+5. **Rate Limiting**: Prevent webhook spam
+
+### Security Checklist
+- [ ] Validate all webhook payloads
+- [ ] Sanitize display strings
+- [ ] Implement CSP headers
+- [ ] No logging of sensitive data
+- [ ] Secure WebSocket connections
+
+## Known Limitations
+
+### From v1 Analysis
+1. **Webhook Only**: No polling fallback
+2. **Audio Focus**: Video support secondary
+3. **Single User**: One Plex user at a time
+4. **Local Only**: No cloud deployment
+
+### Accepted Constraints
+- No playback control (display only)
+- No library browsing
+- No multi-room support (one Pi = one display)
+- English UI only (initially)
+
+## Success Criteria
+
+### MVP Requirements
+- [x] Real-time updates via webhook
+- [x] Persistent state across restarts
+- [x] Secure token handling
+- [x] Pi-optimized performance
+- [ ] Touch-friendly interface
+- [ ] Multiple display layouts
+- [ ] Error recovery
+- [ ] One-command deployment
+
+### Future Enhancements
+- Remote configuration
+- Multiple user support
+- Playlist display
+- Recently played history
+- Spotify/Tidal integration
+- Home Assistant integration
+
+## Development Commands
+
+```bash
+# Development
+cd frontend && npm run dev  # Start frontend dev server
+cd backend && npm run dev   # Start backend with hot reload
+
+# Production Build
+npm run build              # Build both frontend and backend
+npm run start              # Start production server
+
+# Testing
+npm run test               # Run all tests
+npm run test:e2e          # Run E2E tests
+npm run bench             # Run performance benchmarks
+
+# Deployment
+./scripts/deploy-pi.sh    # Deploy to configured Pi
+```
+
+## Resources
+
+### Plex Documentation
+- [Plex Media Server URL Commands](https://support.plex.tv/articles/201638786-plex-media-server-url-commands/)
+- [Plex Webhooks](https://support.plex.tv/articles/115002267687-webhooks/)
+- Plex Web App (inspect network traffic for API discovery)
+
+### Related Projects
+- [Tautulli](https://tautulli.com/) - Plex monitoring
+- [Varken](https://github.com/Boerderij/Varken) - Plex data collector
+
+## Version History
+- v1.0 - Initial implementation (archived)
+- v2.0 - Complete rewrite (this plan)
+
+---
+
+*Last updated: 2025-08-01*
