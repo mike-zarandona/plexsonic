@@ -176,11 +176,11 @@ class StorageService {
 - Connection status indicator
 
 ### Deliverables
-- [ ] Working webhook endpoint with authentication
-- [ ] WebSocket server broadcasting updates
-- [ ] React frontend receiving real-time updates
-- [ ] Basic media display (title, artist, album, art)
-- [ ] State persistence across restarts
+- [x] Working webhook endpoint with authentication
+- [x] WebSocket server broadcasting updates
+- [x] React frontend receiving real-time updates
+- [x] Basic media display (title, artist, album, art)
+- [x] State persistence across restarts
 
 ## Phase 2: Plex API Integration (Day 3-4)
 

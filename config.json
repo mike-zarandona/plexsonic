@@ -1,0 +1,11 @@
+{
+  "plexServer": {
+    "address": "192.168.0.10",
+    "port": 32400
+  },
+  "user": {
+    "username": "themikez",
+    "xPlexToken": "ULzpzSvMznjczz67mhAs"
+  },
+  "libraryID": "f688a31dc13a4aa2bd73453f044022f1"
+}
