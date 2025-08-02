@@ -11,6 +11,7 @@ interface GestureWrapperProps {
   initialMode: DisplayMode;
   touchEnabled: boolean;
   animationsEnabled: boolean;
+  onOpenSettings: () => void;
 }
 
 const DISPLAY_MODES: DisplayMode[] = ['compact', 'standard', 'gallery'];
@@ -19,7 +20,8 @@ export const GestureWrapper = memo(function GestureWrapper({
   currentState,
   initialMode,
   touchEnabled,
-  animationsEnabled
+  animationsEnabled,
+  onOpenSettings
 }: GestureWrapperProps) {
   const [currentMode, setCurrentMode] = useState<DisplayMode>(initialMode);
   const [showNotification, setShowNotification] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export const GestureWrapper = memo(function GestureWrapper({
       },
       
       onSettings: () => {
-        showTemporaryNotification('Settings (not implemented)');
+        onOpenSettings();
       },
       
       onZoomToggle: () => {

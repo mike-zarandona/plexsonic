@@ -37,6 +37,7 @@ function App() {
           initialMode={displayConfig.mode}
           touchEnabled={displayConfig.touchEnabled && config.gesturesEnabled}
           animationsEnabled={displayConfig.animationsEnabled && config.animationsEnabled}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       ) : (
         <div className="flex items-center justify-center min-h-screen">
