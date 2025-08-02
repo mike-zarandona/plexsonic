@@ -3,8 +3,45 @@
 @tailwind utilities;
 
 @layer base {
+  /* CSS Variables for theme colors */
+  :root {
+    --bg-primary: 0 0 0;
+    --bg-secondary: 17 24 39;
+    --bg-tertiary: 31 41 55;
+    --text-primary: 255 255 255;
+    --text-secondary: 156 163 175;
+    --text-muted: 107 114 128;
+    --accent: 59 130 246;
+    --accent-hover: 37 99 235;
+  }
+
+  /* Light Theme */
+  .theme-light {
+    --bg-primary: 255 255 255;
+    --bg-secondary: 249 250 251;
+    --bg-tertiary: 243 244 246;
+    --text-primary: 17 24 39;
+    --text-secondary: 75 85 99;
+    --text-muted: 107 114 128;
+    --accent: 59 130 246;
+    --accent-hover: 37 99 235;
+  }
+
+  /* High Contrast Theme */
+  .theme-high-contrast {
+    --bg-primary: 0 0 0;
+    --bg-secondary: 0 0 0;
+    --bg-tertiary: 17 17 17;
+    --text-primary: 255 255 255;
+    --text-secondary: 255 255 255;
+    --text-muted: 204 204 204;
+    --accent: 255 255 0;
+    --accent-hover: 255 215 0;
+  }
+
   body {
-    @apply bg-black text-white;
+    background-color: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
     /* Optimize for performance */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -85,5 +122,42 @@
 
   .will-change-opacity {
     will-change: opacity;
+  }
+
+  /* Theme-aware utility classes */
+  .bg-theme-primary {
+    background-color: rgb(var(--bg-primary));
+  }
+
+  .bg-theme-secondary {
+    background-color: rgb(var(--bg-secondary));
+  }
+
+  .bg-theme-tertiary {
+    background-color: rgb(var(--bg-tertiary));
+  }
+
+  .text-theme-primary {
+    color: rgb(var(--text-primary));
+  }
+
+  .text-theme-secondary {
+    color: rgb(var(--text-secondary));
+  }
+
+  .text-theme-muted {
+    color: rgb(var(--text-muted));
+  }
+
+  .text-theme-accent {
+    color: rgb(var(--accent));
+  }
+
+  .bg-theme-accent {
+    background-color: rgb(var(--accent));
+  }
+
+  .bg-theme-accent:hover {
+    background-color: rgb(var(--accent-hover));
   }
 }

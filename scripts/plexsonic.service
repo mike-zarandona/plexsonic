@@ -1,0 +1,28 @@
+[Unit]
+Description=PlexSonic v2 - Real-time Plex Media Display
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=plexsonic
+WorkingDirectory=/opt/plexsonic
+ExecStart=/usr/bin/node backend/dist/server.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/plexsonic
+CapabilityBoundingSet=
+
+# Resource limits for Raspberry Pi
+MemoryMax=200M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,4 @@
-export type DisplayMode = 'compact' | 'standard' | 'gallery';
+export type DisplayMode = 'auto' | 'compact' | 'standard' | 'gallery';
 
 export interface DisplayConfig {
   mode: DisplayMode;
