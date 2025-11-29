@@ -1,133 +1,108 @@
-import { FastifyPluginAsync, FastifyRequest } from 'fastify';
-import { createHmac } from 'crypto';
-import type { PlexWebhookPayload, CurrentState } from '../types/plex.js';
-import { Config } from '../config.js';
-import { StorageService } from '../services/storage.js';
+import { FastifyInstance, FastifyRequest } from 'fastify';
+import multipart from '@fastify/multipart';
+import { PlexWebhookPayload, CurrentState } from '../types/plex.js';
+import { config } from '../config.js';
+import { saveState, updatePauseState, getState } from '../services/storage.js';
+import { broadcast } from '../services/websocket.js';
 
-interface WebhookBody {
-  payload: string;
-}
+export async function webhookRoutes(fastify: FastifyInstance) {
+  // Register multipart support for this route
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB max for thumbnails
+    },
+  });
 
-export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
-  const storage = new StorageService();
-
-  fastify.post<{ Body: WebhookBody }>('/webhook', async (request, reply) => {
+  fastify.post('/api/webhook', async (request: FastifyRequest, reply) => {
     try {
-      let payload: string | any;
-      
-      // Log incoming webhook details
-      fastify.log.info('Webhook received', {
-        headers: request.headers,
-        isMultipart: request.isMultipart(),
-        contentType: request.headers['content-type']
-      });
-      
-      // Handle multipart form data from Plex
-      if (request.isMultipart()) {
-        const parts = request.parts();
-        let foundPayload = false;
-        
-        for await (const part of parts) {
-          if (part.type === 'field' && part.fieldname === 'payload') {
-            payload = part.value;
-            foundPayload = true;
-            fastify.log.info('Found payload field', { 
-              payloadType: typeof payload,
-              payloadLength: typeof payload === 'string' ? payload.length : undefined 
-            });
-            break;
+      const parts = request.parts();
+      let payload: PlexWebhookPayload | null = null;
+
+      for await (const part of parts) {
+        if (part.type === 'field' && part.fieldname === 'payload') {
+          try {
+            payload = JSON.parse(part.value as string);
+          } catch (e) {
+            fastify.log.error('Failed to parse webhook payload JSON');
+            return reply.status(400).send({ error: 'Invalid JSON payload' });
           }
         }
-        
-        if (!foundPayload) {
-          return reply.code(400).send({ error: 'Missing payload in multipart data' });
-        }
-      } else {
-        // Handle regular JSON body
-        fastify.log.info('Request body', { body: request.body });
-        payload = request.body.payload;
+        // We ignore the thumb file part - we'll fetch it via image proxy
       }
-      
+
       if (!payload) {
-        return reply.code(400).send({ error: 'Missing payload' });
+        fastify.log.warn('No payload found in webhook request');
+        return reply.status(400).send({ error: 'No payload found' });
       }
 
-      // Note: Plex webhooks don't include signatures, so we skip signature verification
-      // Security relies on: 
-      // 1. Only accepting events from configured username
-      // 2. HTTPS in production
-      // 3. Firewall rules to restrict access
-
-      // Parse the JSON payload (handle both string and object)
-      let webhookData: PlexWebhookPayload;
-      if (typeof payload === 'string') {
-        webhookData = JSON.parse(payload);
-      } else {
-        // Multipart parser may have already parsed it
-        webhookData = payload as any;
-      }
-      
-      // Only process events from the configured user
-      if (webhookData.Account.title !== Config.plex.username) {
-        return reply.code(200).send({ status: 'ignored', reason: 'different user' });
+      // Filter by username
+      if (payload.Account.title !== config.plex.username) {
+        fastify.log.info(
+          `Ignoring webhook from user: ${payload.Account.title} (expected: ${config.plex.username})`
+        );
+        return reply.status(200).send({ status: 'ignored', reason: 'different user' });
       }
 
-      // Debug: Log webhook metadata to see what image fields are available
-      console.log('DEBUG - Webhook metadata received:', JSON.stringify({
-        title: webhookData.Metadata.title,
-        type: webhookData.Metadata.type,
-        thumb: webhookData.Metadata.thumb,
-        art: webhookData.Metadata.art,
-        parentThumb: webhookData.Metadata.parentThumb,
-        grandparentThumb: webhookData.Metadata.grandparentThumb,
-        grandparentArt: webhookData.Metadata.grandparentArt,
-        // Include parent info for context
-        grandparentTitle: webhookData.Metadata.grandparentTitle,
-        parentTitle: webhookData.Metadata.parentTitle
-      }, null, 2));
-
-      // Create current state from webhook data
-      const currentState: CurrentState = {
-        event: webhookData.event,
-        metadata: webhookData.Metadata,
-        player: webhookData.Player,
-        timestamp: Date.now(),
-        isPaused: webhookData.event === 'media.pause',
-      };
-
-      // Save state to storage
-      await storage.saveState(currentState);
-
-      // Broadcast to WebSocket clients
-      if (fastify.websocketServer) {
-        const message = JSON.stringify({
-          type: 'state-update',
-          data: currentState,
-        });
-
-        fastify.websocketServer.clients.forEach((client) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(message);
-          }
-        });
+      // Filter for music only (librarySectionType === 'artist')
+      if (payload.Metadata?.librarySectionType !== 'artist') {
+        fastify.log.info(
+          `Ignoring non-music webhook: ${payload.Metadata?.librarySectionType}`
+        );
+        return reply.status(200).send({ status: 'ignored', reason: 'not music' });
       }
 
-      // Clear state on media stop
-      if (webhookData.event === 'media.stop') {
-        await storage.clearState();
+      // Only process relevant events
+      const relevantEvents = ['media.play', 'media.pause', 'media.resume', 'media.stop'];
+      if (!relevantEvents.includes(payload.event)) {
+        fastify.log.info(`Ignoring event type: ${payload.event}`);
+        return reply.status(200).send({ status: 'ignored', reason: 'irrelevant event' });
       }
 
-      return reply.code(200).send({ status: 'processed' });
-    } catch (error) {
-      fastify.log.error(error);
-      return reply.code(500).send({ error: 'Internal server error' });
+      fastify.log.info({
+        event: payload.event,
+        track: payload.Metadata.title,
+        artist: payload.Metadata.grandparentTitle,
+        album: payload.Metadata.parentTitle,
+        player: payload.Player.title,
+      }, 'Processing webhook');
+
+      // Handle different events
+      if (payload.event === 'media.pause') {
+        await updatePauseState(true);
+        broadcast(getState());
+      } else if (payload.event === 'media.resume') {
+        await updatePauseState(false);
+        broadcast(getState());
+      } else if (payload.event === 'media.play') {
+        // Get the best available thumb (prefer album/parent thumb)
+        const thumb = payload.Metadata.parentThumb || payload.Metadata.thumb || '';
+
+        const state: CurrentState = {
+          event: payload.event,
+          metadata: {
+            title: payload.Metadata.title,
+            grandparentTitle: payload.Metadata.grandparentTitle || 'Unknown Artist',
+            parentTitle: payload.Metadata.parentTitle || 'Unknown Album',
+            parentYear: payload.Metadata.parentYear,
+            thumb,
+          },
+          player: {
+            title: payload.Player.title,
+            uuid: payload.Player.uuid,
+          },
+          timestamp: Date.now(),
+          isPaused: false,
+        };
+
+        await saveState(state);
+        broadcast(state);
+      }
+      // media.stop: we keep the last state displayed
+
+      return reply.status(200).send({ status: 'ok' });
+    } catch (err) {
+      fastify.log.error(err, 'Error processing webhook');
+      return reply.status(500).send({ error: 'Internal server error' });
     }
   });
-};
-
-function verifyWebhookSignature(payload: string, signature: string): boolean {
-  const hmac = createHmac('sha256', Config.webhook.secret);
-  hmac.update(payload);
-  const expectedSignature = hmac.digest('hex');
-  return signature === expectedSignature;
 }

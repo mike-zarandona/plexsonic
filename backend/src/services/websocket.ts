@@ -1,80 +1,94 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
-import type { WebSocket } from 'ws';
-import { StorageService } from './storage.js';
+import { FastifyInstance } from 'fastify';
+import websocket from '@fastify/websocket';
+import { WebSocket } from 'ws';
+import { getState } from './storage.js';
+import { CurrentState } from '../types/plex.js';
 
-interface WebSocketMessage {
-  type: 'ping' | 'state-request';
-  data?: any;
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+
+// Store all connected clients
+const clients = new Set<WebSocket>();
+
+/**
+ * Broadcast state to all connected clients
+ */
+export function broadcast(state: CurrentState | null): void {
+  const message = JSON.stringify({
+    type: 'state',
+    data: state,
+  });
+
+  for (const client of clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  }
 }
 
-export async function setupWebSocket(fastify: FastifyInstance): Promise<void> {
-  const storage = new StorageService();
+/**
+ * Register WebSocket routes
+ */
+export async function websocketRoutes(fastify: FastifyInstance) {
+  await fastify.register(websocket);
 
-  fastify.get('/ws', { websocket: true }, async (socket: WebSocket, req: FastifyRequest) => {
+  fastify.get('/ws', { websocket: true }, (socket, req) => {
     fastify.log.info('WebSocket client connected');
+    clients.add(socket);
 
-    // Send current state on connection
-    try {
-      const currentState = await storage.getState();
-      if (currentState) {
-        socket.send(JSON.stringify({
-          type: 'state-update',
-          data: currentState,
-        }));
-      }
-    } catch (error) {
-      fastify.log.error('Failed to send initial state:', error);
-    }
+    // Send current state immediately on connect
+    const currentState = getState();
+    socket.send(JSON.stringify({
+      type: 'state',
+      data: currentState,
+    }));
 
-    // Set up heartbeat
-    let isAlive = true;
+    // Heartbeat ping/pong
     const heartbeatInterval = setInterval(() => {
-      if (!isAlive) {
-        socket.terminate();
-        return;
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.ping();
       }
-      isAlive = false;
-      socket.ping();
-    }, 30000); // 30 seconds
+    }, HEARTBEAT_INTERVAL);
 
+    // Handle pong responses (client alive)
     socket.on('pong', () => {
-      isAlive = true;
+      fastify.log.debug('Received pong from client');
     });
 
-    // Handle incoming messages
-    socket.on('message', async (data: Buffer) => {
+    // Handle messages from client
+    socket.on('message', (message) => {
       try {
-        const message: WebSocketMessage = JSON.parse(data.toString());
-        
-        switch (message.type) {
-          case 'ping':
-            socket.send(JSON.stringify({ type: 'pong' }));
-            break;
-            
-          case 'state-request':
-            const state = await storage.getState();
-            socket.send(JSON.stringify({
-              type: 'state-update',
-              data: state,
-            }));
-            break;
-            
-          default:
-            fastify.log.warn('Unknown message type:', message.type);
+        const data = JSON.parse(message.toString());
+        // Handle client messages if needed (e.g., request current state)
+        if (data.type === 'getState') {
+          socket.send(JSON.stringify({
+            type: 'state',
+            data: getState(),
+          }));
         }
-      } catch (error) {
-        fastify.log.error('Failed to handle WebSocket message:', error);
+      } catch {
+        // Ignore invalid JSON
       }
     });
 
-    // Clean up on disconnect
+    // Clean up on close
     socket.on('close', () => {
-      clearInterval(heartbeatInterval);
       fastify.log.info('WebSocket client disconnected');
+      clearInterval(heartbeatInterval);
+      clients.delete(socket);
     });
 
+    // Handle errors
     socket.on('error', (error) => {
-      fastify.log.error('WebSocket error:', error);
+      fastify.log.error(error, 'WebSocket error');
+      clearInterval(heartbeatInterval);
+      clients.delete(socket);
     });
   });
+}
+
+/**
+ * Get number of connected clients
+ */
+export function getClientCount(): number {
+  return clients.size;
 }

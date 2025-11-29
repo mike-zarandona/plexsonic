@@ -1,41 +1,40 @@
-import { config } from 'dotenv';
-import { join, resolve } from 'path';
+import { config as dotenvConfig } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-config({ path: resolve(process.cwd(), '../.env') });
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export const Config = {
+// Load .env from project root
+dotenvConfig({ path: resolve(__dirname, '../../.env') });
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+function optionalEnv(name: string, defaultValue: string): string {
+  return process.env[name] || defaultValue;
+}
+
+export const config = {
   plex: {
-    serverUrl: process.env.PLEX_SERVER_URL || '192.168.1.100',
-    serverPort: parseInt(process.env.PLEX_SERVER_PORT || '32400', 10),
-    token: process.env.PLEX_TOKEN || '',
-    username: process.env.PLEX_USERNAME || '',
-    libraryId: process.env.PLEX_LIBRARY_ID || '',
+    serverUrl: requireEnv('PLEX_SERVER_URL'),
+    serverPort: optionalEnv('PLEX_SERVER_PORT', '32400'),
+    token: requireEnv('PLEX_TOKEN'),
+    username: requireEnv('PLEX_USERNAME'),
   },
-  webhook: {
-    secret: process.env.WEBHOOK_SECRET || '',
+  backend: {
+    port: parseInt(optionalEnv('BACKEND_PORT', '3001'), 10),
   },
-  server: {
-    backendPort: parseInt(process.env.BACKEND_PORT || '3001', 10),
-    frontendPort: parseInt(process.env.FRONTEND_PORT || '5173', 10),
-  },
-  features: {
-    enableTouchGestures: process.env.ENABLE_TOUCH_GESTURES === 'true',
-    enableAnimations: process.env.ENABLE_ANIMATIONS === 'true',
-  },
-  storage: {
-    dataPath: join(process.cwd(), '..', 'data'),
+  data: {
+    dir: resolve(__dirname, '../../data'),
+    stateFile: resolve(__dirname, '../../data/current-state.json'),
   },
 } as const;
 
-export function validateConfig(): void {
-  const required = [
-    ['PLEX_TOKEN', Config.plex.token],
-  ];
-
-  const missing = required.filter(([name, value]) => !value);
-  
-  if (missing.length > 0) {
-    const missingVars = missing.map(([name]) => name).join(', ');
-    throw new Error(`Missing required environment variables: ${missingVars}`);
-  }
+export function getPlexBaseUrl(): string {
+  return `http://${config.plex.serverUrl}:${config.plex.serverPort}`;
 }

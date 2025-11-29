@@ -1,46 +1,64 @@
-import { promises as fs } from 'fs';
-import { join } from 'path';
-import type { CurrentState } from '../types/plex.js';
-import { Config } from '../config.js';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import { dirname } from 'path';
+import { config } from '../config.js';
+import { CurrentState } from '../types/plex.js';
 
-export class StorageService {
-  private readonly filePath: string;
+let currentState: CurrentState | null = null;
 
-  constructor() {
-    this.filePath = join(Config.storage.dataPath, 'current-state.json');
+/**
+ * Initialize storage - ensure data directory exists and load state
+ */
+export async function initStorage(): Promise<void> {
+  const dir = dirname(config.data.stateFile);
+  if (!existsSync(dir)) {
+    await mkdir(dir, { recursive: true });
   }
 
-  async saveState(state: CurrentState): Promise<void> {
-    try {
-      await fs.mkdir(Config.storage.dataPath, { recursive: true });
-      await fs.writeFile(this.filePath, JSON.stringify(state, null, 2), 'utf-8');
-    } catch (error) {
-      console.error('Failed to save state:', error);
-      throw error;
-    }
+  // Try to load existing state
+  try {
+    const data = await readFile(config.data.stateFile, 'utf-8');
+    currentState = JSON.parse(data);
+  } catch {
+    // File doesn't exist or is invalid, that's fine
+    currentState = null;
   }
+}
 
-  async getState(): Promise<CurrentState | null> {
-    try {
-      const data = await fs.readFile(this.filePath, 'utf-8');
-      return JSON.parse(data) as CurrentState;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return null;
-      }
-      console.error('Failed to read state:', error);
-      throw error;
-    }
+/**
+ * Get current playback state
+ */
+export function getState(): CurrentState | null {
+  return currentState;
+}
+
+/**
+ * Save current playback state
+ */
+export async function saveState(state: CurrentState): Promise<void> {
+  currentState = state;
+  await writeFile(config.data.stateFile, JSON.stringify(state, null, 2), 'utf-8');
+}
+
+/**
+ * Clear current playback state
+ */
+export async function clearState(): Promise<void> {
+  currentState = null;
+  try {
+    await writeFile(config.data.stateFile, 'null', 'utf-8');
+  } catch {
+    // Ignore errors when clearing
   }
+}
 
-  async clearState(): Promise<void> {
-    try {
-      await fs.unlink(this.filePath);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error('Failed to clear state:', error);
-        throw error;
-      }
-    }
+/**
+ * Update pause state without changing metadata
+ */
+export async function updatePauseState(isPaused: boolean): Promise<void> {
+  if (currentState) {
+    currentState.isPaused = isPaused;
+    currentState.timestamp = Date.now();
+    await writeFile(config.data.stateFile, JSON.stringify(currentState, null, 2), 'utf-8');
   }
 }
