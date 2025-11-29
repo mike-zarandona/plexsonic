@@ -1,10 +1,22 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { config } from './config.js';
 import { webhookRoutes } from './routes/webhook.js';
 import { imageRoutes } from './routes/images.js';
 import { initStorage, getState } from './services/storage.js';
 import { websocketRoutes, getClientCount } from './services/websocket.js';
+
+// Validate environment early with helpful error message
+let config: typeof import('./config.js').config;
+try {
+  const configModule = await import('./config.js');
+  config = configModule.config;
+} catch (err) {
+  console.error('\n❌ Configuration Error:\n');
+  console.error((err as Error).message);
+  console.error('\n📝 Make sure you have a .env file with the required variables.');
+  console.error('   Copy .env.example to .env and fill in your values.\n');
+  process.exit(1);
+}
 
 const fastify = Fastify({
   logger: {

@@ -282,50 +282,50 @@ Each phase builds on the previous and results in something testable.
 
 ### 2.1 Initialize React + Vite
 
-- [ ] Initialize `frontend/package.json`
-- [ ] Create `frontend/vite.config.ts`
-- [ ] Create `frontend/tsconfig.json`
-- [ ] Create `frontend/index.html`
-- [ ] Create `frontend/src/main.tsx`
-- [ ] Create `frontend/src/App.tsx` (placeholder)
+- [x] Initialize `frontend/package.json`
+- [x] Create `frontend/vite.config.ts`
+- [x] Create `frontend/tsconfig.json`
+- [x] Create `frontend/index.html`
+- [x] Create `frontend/src/main.tsx`
+- [x] Create `frontend/src/App.tsx` (placeholder)
 
 **Checkpoint: `npm run dev` shows React app at localhost:5173**
 
 ### 2.2 Setup Tailwind CSS
 
-- [ ] Install Tailwind, PostCSS, Autoprefixer
-- [ ] Create `frontend/tailwind.config.js`
-- [ ] Create `frontend/postcss.config.js`
-- [ ] Create `frontend/src/index.css` with Tailwind directives
-- [ ] Configure dark theme colors
+- [x] Install Tailwind, PostCSS, Autoprefixer
+- [x] Create `frontend/tailwind.config.js`
+- [x] Create `frontend/postcss.config.js`
+- [x] Create `frontend/src/index.css` with Tailwind directives
+- [x] Configure dark theme colors
 
 **Checkpoint: Tailwind classes work in components**
 
 ### 2.3 WebSocket Hook
 
-- [ ] Create `frontend/src/types/plex.ts` (mirror backend types)
-- [ ] Create `frontend/src/hooks/useWebSocket.ts`
-- [ ] Implement connection with exponential backoff reconnect
-- [ ] Implement state management
-- [ ] Implement heartbeat
+- [x] Create `frontend/src/types/plex.ts` (mirror backend types)
+- [x] Create `frontend/src/hooks/useWebSocket.ts`
+- [x] Implement connection with exponential backoff reconnect
+- [x] Implement state management
+- [ ] Implement heartbeat (browser auto-responds to server pings; no client-side timeout detection)
 
 **Checkpoint: Hook connects, logs state updates in console**
 
 ### 2.4 Connection Status Component
 
-- [ ] Create `frontend/src/components/ConnectionStatus.tsx`
-- [ ] Show: connecting, connected, disconnected, error states
-- [ ] Small, unobtrusive indicator
+- [x] Create `frontend/src/components/ConnectionStatus.tsx`
+- [x] Show: connecting, connected, disconnected, error states
+- [x] Small, unobtrusive indicator
 
 **Checkpoint: Status indicator shows connection state**
 
 ### 2.5 NowPlaying Component
 
-- [ ] Create `frontend/src/components/NowPlaying.tsx`
-- [ ] Layout: album art + track info
-- [ ] Use image proxy for album art
-- [ ] Fallback for missing art (music emoji)
-- [ ] Paused state visual treatment
+- [x] Create `frontend/src/components/NowPlaying.tsx`
+- [x] Layout: album art + track info
+- [x] Use image proxy for album art
+- [x] Fallback for missing art (music emoji)
+- [x] Paused state visual treatment
 
 **Checkpoint: Full display working with live Plex data**
 
@@ -335,23 +335,23 @@ Each phase builds on the previous and results in something testable.
 
 ### 3.1 Error Handling
 
-- [ ] Add React error boundary
-- [ ] Handle missing metadata gracefully
-- [ ] Validate environment on backend startup
-- [ ] Improve error messages
+- [x] Add React error boundary
+- [x] Handle missing metadata gracefully
+- [x] Validate environment on backend startup
+- [x] Improve error messages
 
 ### 3.2 Visual Polish
 
-- [ ] Smooth transitions between states
-- [ ] Loading state while connecting
-- [ ] Paused overlay with icon
-- [ ] Typography refinement
+- [x] Smooth transitions between states
+- [x] Loading state while connecting
+- [x] Paused overlay with icon
+- [x] Typography refinement
 
 ### 3.3 Logging & Debugging
 
 - [x] Structured logging with pino
 - [x] Add debug endpoint `/api/debug/state`
-- [ ] Frontend console logging (dev only)
+- [x] Frontend console logging (dev only)
 
 **Checkpoint: App handles edge cases gracefully**
 
@@ -441,8 +441,8 @@ Update this section as you complete phases:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Backend | ✅ Complete | All endpoints verified working |
-| Phase 2: Frontend | Not Started | |
-| Phase 3: Polish | In Progress | Debug endpoint done early |
+| Phase 2: Frontend | ✅ Complete | React + Vite + Tailwind + WebSocket |
+| Phase 3: Polish | ✅ Complete | Error handling, transitions, logging |
 | Phase 4: Pi Deploy | Not Started | |
 | Phase 5: Extras | Not Started | |
 

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
-import { WebSocket } from 'ws';
+import { WebSocket, RawData } from 'ws';
 import { getState } from './storage.js';
 import { CurrentState } from '../types/plex.js';
 
@@ -55,7 +55,7 @@ export async function websocketRoutes(fastify: FastifyInstance) {
     });
 
     // Handle messages from client
-    socket.on('message', (message) => {
+    socket.on('message', (message: RawData) => {
       try {
         const data = JSON.parse(message.toString());
         // Handle client messages if needed (e.g., request current state)
@@ -78,7 +78,7 @@ export async function websocketRoutes(fastify: FastifyInstance) {
     });
 
     // Handle errors
-    socket.on('error', (error) => {
+    socket.on('error', (error: Error) => {
       fastify.log.error(error, 'WebSocket error');
       clearInterval(heartbeatInterval);
       clients.delete(socket);
