@@ -361,23 +361,23 @@ Each phase builds on the previous and results in something testable.
 
 ### 4.1 Build Configuration
 
-- [ ] Production build scripts
-- [ ] Backend serves built frontend
-- [ ] Environment validation
-- [ ] Optimize bundle size
+- [x] Production build scripts
+- [x] Backend serves built frontend
+- [x] Environment validation
+- [x] Optimize bundle size
 
 ### 4.2 Deployment Scripts
 
-- [ ] Create `scripts/plexsonic.service` (systemd)
-- [ ] Create `scripts/install-pi.sh` (one-line installer)
-- [ ] Create `scripts/setup-kiosk.sh` (Chromium kiosk)
+- [x] Create `scripts/plexsonic.service` (systemd)
+- [x] Create `scripts/install-pi.sh` (one-line installer)
+- [x] Create `scripts/setup-kiosk.sh` (Chromium kiosk)
 
 ### 4.3 Documentation
 
-- [ ] Write README with setup instructions
-- [ ] Document Plex webhook configuration
-- [ ] Document environment variables
-- [ ] Troubleshooting guide
+- [x] Write README with setup instructions
+- [x] Document Plex webhook configuration
+- [x] Document environment variables
+- [x] Troubleshooting guide
 
 **Checkpoint: Fresh Pi install works end-to-end**
 
@@ -443,7 +443,7 @@ Update this section as you complete phases:
 | Phase 1: Backend | ✅ Complete | All endpoints verified working |
 | Phase 2: Frontend | ✅ Complete | React + Vite + Tailwind + WebSocket |
 | Phase 3: Polish | ✅ Complete | Error handling, transitions, logging |
-| Phase 4: Pi Deploy | Not Started | |
+| Phase 4: Pi Deploy | ✅ Complete | Systemd, install script, kiosk mode, docs |
 | Phase 5: Extras | Not Started | |
 
 ---

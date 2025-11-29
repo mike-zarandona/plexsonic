@@ -1,9 +1,17 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import { webhookRoutes } from './routes/webhook.js';
 import { imageRoutes } from './routes/images.js';
 import { initStorage, getState } from './services/storage.js';
 import { websocketRoutes, getClientCount } from './services/websocket.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const isProduction = process.env.NODE_ENV === 'production';
+const frontendDistPath = resolve(__dirname, '../../frontend/dist');
 
 // Validate environment early with helpful error message
 let config: typeof import('./config.js').config;
@@ -53,6 +61,29 @@ fastify.get('/api/debug/state', async () => {
 await fastify.register(websocketRoutes);
 await fastify.register(webhookRoutes);
 await fastify.register(imageRoutes);
+
+// In production, serve frontend static files
+if (isProduction && existsSync(frontendDistPath)) {
+  await fastify.register(fastifyStatic, {
+    root: frontendDistPath,
+    prefix: '/',
+  });
+
+  // SPA fallback: serve index.html for non-API routes
+  fastify.setNotFoundHandler((request, reply) => {
+    // Don't handle API or WebSocket routes
+    if (request.url.startsWith('/api') || request.url.startsWith('/ws')) {
+      reply.code(404).send({ error: 'Not Found' });
+      return;
+    }
+    reply.sendFile('index.html');
+  });
+
+  fastify.log.info(`Serving frontend from ${frontendDistPath}`);
+} else if (isProduction) {
+  fastify.log.warn(`Frontend build not found at ${frontendDistPath}`);
+  fastify.log.warn('Run "npm run build" to build the frontend');
+}
 
 // Start server
 const start = async () => {
