@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import multipart from '@fastify/multipart';
 import { PlexWebhookPayload, CurrentState } from '../types/plex.js';
 import { config } from '../config.js';
-import { saveState } from '../services/storage.js';
+import { saveState, getState } from '../services/storage.js';
 import { broadcast } from '../services/websocket.js';
 
 export async function webhookRoutes(fastify: FastifyInstance) {
@@ -72,6 +72,10 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       // Get the best available thumb (prefer album/parent thumb)
       const thumb = payload.Metadata.parentThumb || payload.Metadata.thumb || '';
 
+      // For pause/resume, preserve audioQuality and isFavorited from existing state
+      const existingState = getState();
+      const preserveAudioInfo = (payload.event === 'media.pause' || payload.event === 'media.resume') && existingState;
+
       // Build state from current webhook metadata
       const state: CurrentState = {
         event: payload.event,
@@ -81,6 +85,9 @@ export async function webhookRoutes(fastify: FastifyInstance) {
           parentTitle: payload.Metadata.parentTitle || 'Unknown Album',
           parentYear: payload.Metadata.parentYear,
           thumb,
+          // Preserve audio quality info from existing state on pause/resume
+          audioQuality: preserveAudioInfo ? existingState.metadata.audioQuality : undefined,
+          isFavorited: preserveAudioInfo ? existingState.metadata.isFavorited : undefined,
         },
         player: {
           title: payload.Player.title,

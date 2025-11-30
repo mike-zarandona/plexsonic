@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CurrentState } from '../types/plex';
+import { CurrentState, AudioQuality } from '../types/plex';
 
 interface NowPlayingProps {
   state: CurrentState | null;
@@ -8,6 +8,21 @@ interface NowPlayingProps {
 
 function getImageUrl(thumb: string): string {
   return `/api/image?thumb=${encodeURIComponent(thumb)}`;
+}
+
+function formatAudioQuality(quality: AudioQuality): string {
+  const parts: string[] = [quality.codec];
+
+  // For lossless formats like FLAC, show sample rate / bit depth
+  if (quality.sampleRate && quality.bitDepth) {
+    const sampleRateKhz = (quality.sampleRate / 1000).toFixed(1).replace('.0', '');
+    parts.push(`${sampleRateKhz}/${quality.bitDepth}`);
+  } else if (quality.bitrate) {
+    // For lossy formats, show bitrate
+    parts.push(`${quality.bitrate}kbps`);
+  }
+
+  return parts.join(' ');
 }
 
 export function NowPlaying({ state, isPaused }: NowPlayingProps) {
@@ -103,6 +118,18 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
             <span className="text-neutral-600"> ({metadata.parentYear})</span>
           )}
         </p>
+
+        {/* Audio Quality & Favorited */}
+        {(metadata.audioQuality || metadata.isFavorited) && (
+          <p className="text-sm text-neutral-600 flex items-center gap-2">
+            {metadata.audioQuality && (
+              <span>{formatAudioQuality(metadata.audioQuality)}</span>
+            )}
+            {metadata.isFavorited && (
+              <span className="text-red-500">♥</span>
+            )}
+          </p>
+        )}
 
         {/* Now Playing Indicator */}
         <div className="flex items-center gap-2 mt-2">

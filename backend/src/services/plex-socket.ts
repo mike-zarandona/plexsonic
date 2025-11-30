@@ -7,7 +7,9 @@ import {
   PlexNotificationContainer,
   PlexPlaySessionNotification,
   PlexApiMetadataResponse,
+  PlexApiTrackMetadata,
   CurrentState,
+  AudioQuality,
 } from '../types/plex.js';
 
 // Reconnect settings
@@ -27,6 +29,24 @@ let ws: WebSocket | null = null;
 let retryDelay = INITIAL_RETRY_DELAY;
 let retryTimeout: NodeJS.Timeout | null = null;
 let isShuttingDown = false;
+
+/**
+ * Extract audio quality information from track metadata
+ */
+function extractAudioQuality(track: PlexApiTrackMetadata): AudioQuality | undefined {
+  const media = track.Media?.[0];
+  if (!media) return undefined;
+
+  // Get stream details for sample rate and bit depth
+  const audioStream = media.Part?.[0]?.Stream?.find(s => s.streamType === 2);
+
+  return {
+    codec: media.audioCodec.toUpperCase(),
+    bitrate: media.bitrate,
+    sampleRate: audioStream?.samplingRate,
+    bitDepth: audioStream?.bitDepth,
+  };
+}
 
 /**
  * Get the Plex WebSocket URL
@@ -148,6 +168,8 @@ async function handlePlaySessionNotification(notification: PlexPlaySessionNotifi
     }
 
     const thumb = track.parentThumb || track.thumb || '';
+    const audioQuality = extractAudioQuality(track);
+    const isFavorited = track.userRating !== undefined && track.userRating >= 8;
 
     const newState: CurrentState = {
       event: 'media.play',
@@ -157,6 +179,8 @@ async function handlePlaySessionNotification(notification: PlexPlaySessionNotifi
         parentTitle: track.parentTitle || 'Unknown Album',
         parentYear: track.parentYear,
         thumb,
+        audioQuality,
+        isFavorited,
       },
       player: {
         title: 'Plex',

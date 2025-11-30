@@ -109,6 +109,37 @@ export interface PlexApiMetadataResponse {
   };
 }
 
+export interface PlexApiStream {
+  id: number;
+  streamType: number; // 2 = audio
+  codec: string;
+  audioChannelLayout?: string;
+  bitDepth?: number;
+  bitrate?: number;
+  channels?: number;
+  samplingRate?: number;
+}
+
+export interface PlexApiPart {
+  id: number;
+  key: string;
+  duration: number;
+  file: string;
+  size: number;
+  container: string;
+  Stream?: PlexApiStream[];
+}
+
+export interface PlexApiMedia {
+  id: number;
+  duration: number;
+  bitrate?: number;
+  audioChannels?: number;
+  audioCodec: string;
+  container: string;
+  Part?: PlexApiPart[];
+}
+
 export interface PlexApiTrackMetadata {
   ratingKey: string;
   key: string;
@@ -128,6 +159,18 @@ export interface PlexApiTrackMetadata {
   parentThumb?: string;
   grandparentThumb?: string;
   duration: number;
+  userRating?: number; // 0-10, where 10 = favorited
+  Media?: PlexApiMedia[];
+}
+
+/**
+ * Audio quality information
+ */
+export interface AudioQuality {
+  codec: string; // flac, mp3, aac, etc.
+  bitrate?: number; // kbps
+  sampleRate?: number; // Hz (44100, 48000, 96000, etc.)
+  bitDepth?: number; // 16, 24, etc.
 }
 
 /**
@@ -141,6 +184,8 @@ export interface CurrentState {
     parentTitle: string; // Album
     parentYear?: number;
     thumb: string;
+    audioQuality?: AudioQuality;
+    isFavorited?: boolean;
   };
   player: {
     title: string;
