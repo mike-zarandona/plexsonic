@@ -39,26 +39,3 @@ export async function saveState(state: CurrentState): Promise<void> {
   currentState = state;
   await writeFile(config.data.stateFile, JSON.stringify(state, null, 2), 'utf-8');
 }
-
-/**
- * Clear current playback state
- */
-export async function clearState(): Promise<void> {
-  currentState = null;
-  try {
-    await writeFile(config.data.stateFile, 'null', 'utf-8');
-  } catch {
-    // Ignore errors when clearing
-  }
-}
-
-/**
- * Update pause state without changing metadata
- */
-export async function updatePauseState(isPaused: boolean): Promise<void> {
-  if (currentState) {
-    currentState.isPaused = isPaused;
-    currentState.timestamp = Date.now();
-    await writeFile(config.data.stateFile, JSON.stringify(currentState, null, 2), 'utf-8');
-  }
-}

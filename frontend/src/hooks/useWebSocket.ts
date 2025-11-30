@@ -54,9 +54,7 @@ export function useWebSocket(): UseWebSocketReturn {
         if (!mountedRef.current) return;
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          logger.log('[WebSocket] Received message:', message.type, JSON.stringify(message.data, null, 2));
           if (message.type === 'state') {
-            logger.log('[WebSocket] Setting state, metadata:', message.data?.metadata);
             setState(message.data);
           }
         } catch (err) {

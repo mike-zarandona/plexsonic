@@ -14,9 +14,6 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentThumb, setCurrentThumb] = useState<string | null>(null);
 
-  // Debug logging
-  console.log('[NowPlaying] Render - state:', state, 'isPaused:', isPaused);
-
   // Reset image loaded state when thumb changes
   useEffect(() => {
     if (state?.metadata?.thumb !== currentThumb) {

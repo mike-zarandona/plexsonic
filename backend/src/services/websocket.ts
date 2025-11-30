@@ -18,8 +18,6 @@ export function broadcast(state: CurrentState | null): void {
     data: state,
   });
 
-  console.log('[WebSocket] Broadcasting to', clients.size, 'clients:', JSON.stringify(state, null, 2));
-
   for (const client of clients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -39,7 +37,6 @@ export async function websocketRoutes(fastify: FastifyInstance) {
 
     // Send current state immediately on connect
     const currentState = getState();
-    console.log('[WebSocket] Sending initial state to new client:', JSON.stringify(currentState, null, 2));
     socket.send(JSON.stringify({
       type: 'state',
       data: currentState,

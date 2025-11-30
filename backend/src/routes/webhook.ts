@@ -19,25 +19,16 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       let payload: PlexWebhookPayload | null = null;
 
       for await (const part of parts) {
-        fastify.log.info({
-          type: part.type,
-          fieldname: part.fieldname,
-          mimetype: part.mimetype
-        }, 'Webhook part received');
-
         if (part.type === 'field' && part.fieldname === 'payload') {
-          const rawValue = part.value;
-          fastify.log.info({ valueType: typeof rawValue, isObject: typeof rawValue === 'object' }, 'Payload field type');
           try {
             // Value might already be parsed if mimetype is application/json
-            if (typeof rawValue === 'object') {
-              payload = rawValue as PlexWebhookPayload;
+            if (typeof part.value === 'object') {
+              payload = part.value as PlexWebhookPayload;
             } else {
-              payload = JSON.parse(rawValue as string);
+              payload = JSON.parse(part.value as string);
             }
-          } catch (e) {
-            const strValue = typeof rawValue === 'string' ? rawValue.substring(0, 500) : String(rawValue);
-            fastify.log.error({ rawValue: strValue, error: e }, 'Failed to parse webhook payload JSON');
+          } catch {
+            fastify.log.error('Failed to parse webhook payload JSON');
             return reply.status(400).send({ error: 'Invalid JSON payload' });
           }
         }
@@ -50,40 +41,32 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       }
 
       // Filter by username
-      if (payload.Account.title !== config.plex.username) {
-        fastify.log.info(
-          `Ignoring webhook from user: ${payload.Account.title} (expected: ${config.plex.username})`
-        );
+      if (payload.Account?.title !== config.plex.username) {
         return reply.status(200).send({ status: 'ignored', reason: 'different user' });
       }
 
       // Filter for music only (librarySectionType === 'artist')
       if (payload.Metadata?.librarySectionType !== 'artist') {
-        fastify.log.info(
-          `Ignoring non-music webhook: ${payload.Metadata?.librarySectionType}`
-        );
         return reply.status(200).send({ status: 'ignored', reason: 'not music' });
+      }
+
+      // Ensure required fields exist
+      if (!payload.Metadata || !payload.Player) {
+        fastify.log.warn('Webhook missing Metadata or Player');
+        return reply.status(400).send({ error: 'Invalid payload structure' });
       }
 
       // Only process relevant events
       const relevantEvents = ['media.play', 'media.pause', 'media.resume', 'media.stop'];
       if (!relevantEvents.includes(payload.event)) {
-        fastify.log.info(`Ignoring event type: ${payload.event}`);
         return reply.status(200).send({ status: 'ignored', reason: 'irrelevant event' });
       }
-
-      // Log the full payload structure to debug
-      fastify.log.info({
-        fullPayload: JSON.stringify(payload, null, 2).substring(0, 2000)
-      }, 'Full webhook payload');
 
       fastify.log.info({
         event: payload.event,
         track: payload.Metadata?.title,
         artist: payload.Metadata?.grandparentTitle,
-        album: payload.Metadata?.parentTitle,
         player: payload.Player?.title,
-        librarySectionType: payload.Metadata?.librarySectionType,
       }, 'Processing webhook');
 
       // Get the best available thumb (prefer album/parent thumb)

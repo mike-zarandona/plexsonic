@@ -21,6 +21,11 @@ export async function imageRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'Missing thumb parameter' });
       }
 
+      // Validate thumb path to prevent SSRF - only allow Plex library paths
+      if (!thumb.startsWith('/library/')) {
+        return reply.status(400).send({ error: 'Invalid thumb path' });
+      }
+
       try {
         // Construct the full Plex URL for the image
         const imageUrl = `${getPlexBaseUrl()}${thumb}?X-Plex-Token=${config.plex.token}`;
@@ -28,8 +33,11 @@ export async function imageRoutes(fastify: FastifyInstance) {
         fastify.log.debug({ thumb }, 'Fetching image from Plex');
 
         // Fetch the image from Plex (use undici dispatcher for self-signed cert)
-        // @ts-expect-error - Node.js fetch supports dispatcher option via undici
-        const response = await fetch(imageUrl, { dispatcher: plexAgent });
+        const response = await fetch(imageUrl, {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          dispatcher: plexAgent as any,
+          signal: AbortSignal.timeout(10000), // 10 second timeout
+        });
 
         if (!response.ok) {
           fastify.log.error(
