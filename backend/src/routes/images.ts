@@ -1,9 +1,15 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Agent } from 'undici';
 import { config, getPlexBaseUrl } from '../config.js';
 
 interface ImageQuerystring {
   thumb: string;
 }
+
+// Create HTTPS agent that accepts self-signed certificates (Plex uses these)
+const plexAgent = new Agent({
+  connect: { rejectUnauthorized: false },
+});
 
 export async function imageRoutes(fastify: FastifyInstance) {
   fastify.get<{ Querystring: ImageQuerystring }>(
@@ -21,8 +27,9 @@ export async function imageRoutes(fastify: FastifyInstance) {
 
         fastify.log.debug({ thumb }, 'Fetching image from Plex');
 
-        // Fetch the image from Plex
-        const response = await fetch(imageUrl);
+        // Fetch the image from Plex (use undici dispatcher for self-signed cert)
+        // @ts-expect-error - Node.js fetch supports dispatcher option via undici
+        const response = await fetch(imageUrl, { dispatcher: plexAgent });
 
         if (!response.ok) {
           fastify.log.error(

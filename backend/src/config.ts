@@ -23,6 +23,7 @@ export const config = {
   plex: {
     serverUrl: requireEnv('PLEX_SERVER_URL'),
     serverPort: optionalEnv('PLEX_SERVER_PORT', '32400'),
+    useHttps: optionalEnv('PLEX_USE_HTTPS', 'false').toLowerCase() === 'true',
     token: requireEnv('PLEX_TOKEN'),
     username: requireEnv('PLEX_USERNAME'),
   },
@@ -36,5 +37,6 @@ export const config = {
 } as const;
 
 export function getPlexBaseUrl(): string {
-  return `http://${config.plex.serverUrl}:${config.plex.serverPort}`;
+  const protocol = config.plex.useHttps ? 'https' : 'http';
+  return `${protocol}://${config.plex.serverUrl}:${config.plex.serverPort}`;
 }

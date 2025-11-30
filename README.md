@@ -55,6 +55,7 @@ Edit with your Plex settings:
 ```env
 PLEX_SERVER_URL=192.168.1.100    # Your Plex server IP
 PLEX_SERVER_PORT=32400           # Default Plex port
+PLEX_USE_HTTPS=true              # Use HTTPS (most Plex servers require this)
 PLEX_TOKEN=your-plex-token       # See "Getting Your Plex Token" below
 PLEX_USERNAME=your-username      # Your Plex username
 BACKEND_PORT=3001                # Backend server port
@@ -94,6 +95,7 @@ Access the display at: `http://localhost:3001`
 |----------|----------|---------|-------------|
 | `PLEX_SERVER_URL` | Yes | - | Plex server IP or hostname |
 | `PLEX_SERVER_PORT` | No | `32400` | Plex server port |
+| `PLEX_USE_HTTPS` | No | `false` | Use HTTPS for Plex connection (most servers require this) |
 | `PLEX_TOKEN` | Yes | - | Your Plex authentication token |
 | `PLEX_USERNAME` | Yes | - | Filter webhooks to this user only |
 | `BACKEND_PORT` | No | `3001` | Port for the backend server |
@@ -198,14 +200,21 @@ nano .env  # Edit with your values
 
 ### Album art not loading
 
-1. Verify Plex server is accessible:
+1. Check if your Plex server requires HTTPS:
+   ```bash
+   # Try HTTPS first (most servers require this)
+   curl -k "https://<plex-ip>:32400/identity"
+   # If that works, set PLEX_USE_HTTPS=true in .env
+   ```
+
+2. Verify Plex server is accessible:
    ```bash
    curl "http://<plex-ip>:32400/library/sections?X-Plex-Token=<your-token>"
    ```
 
-2. Check `PLEX_TOKEN` in `.env` is correct
+3. Check `PLEX_TOKEN` in `.env` is correct
 
-3. Try the image proxy directly:
+4. Try the image proxy directly:
    ```bash
    curl "http://localhost:3001/api/image?thumb=/library/metadata/123/thumb"
    ```
