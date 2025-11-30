@@ -73,6 +73,64 @@ export type PlexWebhookEvent =
   | 'playback.started';
 
 /**
+ * Plex WebSocket notification types
+ * These come from ws://PLEX:32400/:/websockets/notifications
+ */
+export interface PlexNotificationContainer {
+  NotificationContainer: {
+    type: string;
+    size: number;
+    PlaySessionStateNotification?: PlexPlaySessionNotification[];
+    ActivityNotification?: unknown[];
+    StatusNotification?: unknown[];
+  };
+}
+
+export interface PlexPlaySessionNotification {
+  sessionKey: string;
+  clientIdentifier: string;
+  guid: string;
+  ratingKey: string;
+  url: string;
+  key: string;
+  viewOffset: number;
+  playQueueItemID?: number;
+  state: 'playing' | 'paused' | 'stopped' | 'buffering';
+}
+
+/**
+ * Plex API metadata response (JSON format)
+ * From /library/metadata/{ratingKey}
+ */
+export interface PlexApiMetadataResponse {
+  MediaContainer: {
+    size: number;
+    Metadata: PlexApiTrackMetadata[];
+  };
+}
+
+export interface PlexApiTrackMetadata {
+  ratingKey: string;
+  key: string;
+  parentRatingKey: string;
+  grandparentRatingKey: string;
+  guid: string;
+  type: string;
+  title: string;
+  grandparentKey: string;
+  parentKey: string;
+  grandparentTitle: string; // Artist
+  parentTitle: string; // Album
+  parentYear?: number;
+  index: number;
+  parentIndex: number;
+  thumb?: string;
+  parentThumb?: string;
+  grandparentThumb?: string;
+  duration: number;
+}
+
+/**
  * Application state structure
  */
 export interface CurrentState {

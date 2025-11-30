@@ -8,6 +8,7 @@ import { webhookRoutes } from './routes/webhook.js';
 import { imageRoutes } from './routes/images.js';
 import { initStorage, getState } from './services/storage.js';
 import { websocketRoutes, getClientCount } from './services/websocket.js';
+import { initPlexSocket, shutdownPlexSocket } from './services/plex-socket.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
@@ -92,6 +93,9 @@ const start = async () => {
     await initStorage();
     fastify.log.info('Storage initialized');
 
+    // Connect to Plex WebSocket for real-time track change notifications
+    initPlexSocket();
+
     await fastify.listen({ port: config.backend.port, host: '0.0.0.0' });
     fastify.log.info(`Server listening on port ${config.backend.port}`);
   } catch (err) {
@@ -99,6 +103,17 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+// Graceful shutdown
+const shutdown = async () => {
+  fastify.log.info('Shutting down...');
+  shutdownPlexSocket();
+  await fastify.close();
+  process.exit(0);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 start();
 
