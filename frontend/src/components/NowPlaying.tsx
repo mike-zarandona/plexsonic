@@ -48,7 +48,6 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
           className={`
             w-[440px] h-[440px]
             rounded-md shadow-2xl overflow-hidden
-            bg-neutral-800
             transition-all duration-500 ease-out
           `}
         >
@@ -88,17 +87,17 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
       {/* Track Info - sized for 320px remaining width on 800x480 screen */}
       <div className="flex flex-col gap-1 text-left min-w-0 flex-1">
         {/* Track Title */}
-        <h1 className="text-2xl font-bold text-white truncate now-playing-text">
+        <h1 className="text-2xl font-bold text-white truncate now-playing-text" style={{ maxWidth: 440 }}>
           {metadata.title}
         </h1>
 
         {/* Artist */}
-        <p className="text-xl text-neutral-300 truncate">
+        <p className="text-xl text-neutral-300 truncate" style={{ maxWidth: 440 }}>
           {metadata.grandparentTitle}
         </p>
 
         {/* Album */}
-        <p className="text-lg text-neutral-500 truncate">
+        <p className="text-lg text-neutral-500 truncate" style={{ maxWidth: 440 }}>
           {metadata.parentTitle}
           {metadata.parentYear && (
             <span className="text-neutral-600"> ({metadata.parentYear})</span>
