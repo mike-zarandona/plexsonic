@@ -30,16 +30,16 @@ const statusConfig: Record<Status, { label: string; color: string; pulse: boolea
 export function ConnectionStatus({ status }: ConnectionStatusProps) {
   const config = statusConfig[status];
 
-  // Hide when connected after a brief moment (show briefly to confirm connection)
+  // When connected, show only a tiny subtle dot
   if (status === 'connected') {
     return (
-      <div className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/80 backdrop-blur-sm text-xs text-neutral-400 opacity-50 transition-opacity duration-1000">
-        <span className={`w-2 h-2 rounded-full ${config.color}`} />
-        <span>{config.label}</span>
+      <div className="fixed bottom-3 right-3 p-1.5">
+        <span className="block w-1.5 h-1.5 rounded-full bg-green-500/40" />
       </div>
     );
   }
 
+  // For other states, show more prominent indicator with label
   return (
     <div className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/90 backdrop-blur-sm text-xs text-neutral-300">
       <span

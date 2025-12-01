@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { CurrentState, AudioQuality } from '../types/plex';
 
+type LayoutMode = 'centered' | 'left';
+
 interface NowPlayingProps {
   state: CurrentState | null;
   isPaused: boolean;
+  layoutMode: LayoutMode;
 }
 
 function getImageUrl(thumb: string): string {
@@ -19,13 +22,13 @@ function formatAudioQuality(quality: AudioQuality): string {
     parts.push(`${sampleRateKhz}/${quality.bitDepth}`);
   } else if (quality.bitrate) {
     // For lossy formats, show bitrate
-    parts.push(`${quality.bitrate}kbps`);
+    parts.push(`${quality.bitrate}`);
   }
 
   return parts.join(' ');
 }
 
-export function NowPlaying({ state, isPaused }: NowPlayingProps) {
+export function NowPlaying({ state, isPaused, layoutMode }: NowPlayingProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentThumb, setCurrentThumb] = useState<string | null>(null);
 
@@ -37,10 +40,15 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
     }
   }, [state?.metadata?.thumb, currentThumb]);
 
+  const isCentered = layoutMode === 'centered';
+
   // Nothing playing state
   if (!state || !state.metadata) {
     return (
-      <div className="flex flex-col items-center justify-center text-neutral-500 gap-3 animate-fade-in">
+      <div className={`
+        flex flex-col gap-3 animate-fade-in text-neutral-500
+        ${isCentered ? 'items-center' : 'items-start'}
+      `}>
         <div className="text-6xl">🎵</div>
         <p className="text-lg">Waiting for music...</p>
       </div>
@@ -55,7 +63,10 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
   return (
     <div
       key={trackKey}
-      className="flex flex-col items-center gap-4 w-full animate-fade-in"
+      className={`
+        flex flex-col gap-4 w-full animate-fade-in
+        ${isCentered ? 'items-center' : 'items-start'}
+      `}
     >
       {/* Album Art - 480x480 for 800x480 Pi screen */}
       <div className="relative flex-shrink-0">
@@ -99,40 +110,43 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
         </div>
       </div>
 
-      {/* Track Info - sized for 320px remaining width on 800x480 screen */}
-      <div className="flex flex-col gap-1 text-left min-w-0 flex-1">
-        {/* Track Title */}
-        <h1 className="text-2xl font-bold text-white truncate now-playing-text" style={{ maxWidth: 440 }}>
-          {metadata.title}
-        </h1>
-
+      {/* Track Info */}
+      <div className={`
+        flex flex-col gap-1 min-w-0 flex-1
+        ${isCentered ? 'text-center items-center' : 'text-left items-start'}
+      `}>
         {/* Artist */}
-        <p className="text-xl text-neutral-300 truncate" style={{ maxWidth: 440 }}>
+        <p className="text-lg text-neutral-200 truncate" style={{ maxWidth: 440 }}>
           {metadata.grandparentTitle}
         </p>
 
+        {/* Track Title */}
+        <h1 className="text-xl font-bold text-white truncate now-playing-text" style={{ maxWidth: 440 }}>
+          {metadata.title}
+        </h1>
+
         {/* Album */}
-        <p className="text-lg text-neutral-500 truncate" style={{ maxWidth: 440 }}>
+        <p className="text-lg text-neutral-400 truncate" style={{ maxWidth: 440, fontWeight: "400" }}>
           {metadata.parentTitle}
           {metadata.parentYear && (
-            <span className="text-neutral-600"> ({metadata.parentYear})</span>
+            <span> ({metadata.parentYear})</span>
           )}
         </p>
 
         {/* Audio Quality & Favorited */}
         {(metadata.audioQuality || metadata.isFavorited) && (
-          <p className="text-sm text-neutral-600 flex items-center gap-2">
+          <p className="text-base text-neutral-500 flex items-center gap-4" style={{ fontWeight: "300"}}>
             {metadata.audioQuality && (
               <span>{formatAudioQuality(metadata.audioQuality)}</span>
             )}
             {metadata.isFavorited && (
-              <span className="text-red-500">♥</span>
+              <span className="text-lg">🟊</span>
             )}
           </p>
         )}
 
         {/* Now Playing Indicator */}
-        <div className="flex items-center gap-2 mt-2">
+        {/* <div className="flex items-center gap-2 mt-2">
           <span
             className={`
               w-2 h-2 rounded-full transition-colors duration-300
@@ -142,7 +156,7 @@ export function NowPlaying({ state, isPaused }: NowPlayingProps) {
           <span className="text-xs text-neutral-500 uppercase tracking-wider">
             {isPaused ? 'Paused' : 'Now Playing'}
           </span>
-        </div>
+        </div> */}
       </div>
     </div>
   );
